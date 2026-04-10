@@ -1,0 +1,114 @@
+/* Custom CSS for Swiper pagination */
+.swiper-pagination {
+    position: absolute;
+    bottom: 0px; /* Adjust this value as needed */
+    width: 100%;
+    text-align: center;
+  }
+  
+  .swiper-pagination-bullet {
+    background-color: rgba(
+      255,
+      255,
+      255,
+      0.5
+    ); /* Change pagination bullet color */
+    width: 6px; /* Adjust bullet size */
+    height: 6px; /* Adjust bullet size */
+    margin: 0 5px; /* Adjust space between bullets */
+  }
+  
+  .swiper-pagination-bullet-active {
+    background-color: #ffffff; /* Change active pagination bullet color */
+    width: 8px; /* Adjust bullet size */
+    height: 8px;
+  }
+  .swiper-container {
+    /* Apply custom navigation styles */
+    /* --swiper-navigation-color: #000; */
+    --swiper-navigation-size: 15px;
+    --swiper-navigation-border: 2px;
+    --swiper-navigation-border-color: #000;
+    --swiper-navigation-padding: 2px;
+    position: relative;
+  }
+  /* Custom CSS for Swiper navigation */
+  .swiper-button-prev,
+  .swiper-button-next {
+    color: #8e8e8e;
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    position: absolute;
+    z-index: 10;
+    top: 130px;
+    margin-top: calc(0px - (var(--swiper-navigation-size) / 2));
+    cursor: pointer;
+    width: calc(var(--swiper-navigation-size) / 44 * 27);
+    height: var(--swiper-navigation-size);
+  }
+  .swiper-button-prev-places,
+  .swiper-button-next-places {
+    color: #8e8e8e;
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    position: absolute;
+    z-index: 10;
+    top: 130px;
+    margin-top: calc(0px - (var(--swiper-navigation-size) / 2));
+    cursor: pointer;
+    width: calc(var(--swiper-navigation-size) / 44 * 27);
+    height: var(--swiper-navigation-size);
+  }
+  /* Optional: Adjust navigation position */
+  .swiper-button-prev {
+    left: -20px; /* Adjust left position */
+    top: 200px;
+  }
+  .swiper-button-next {
+    right: -20px;
+    top: 200px;
+  }
+  
+  .custom1 {
+    top: 60px;
+  }
+  
+  .custom2 {
+    top: 60px;
+  }
+  
+  @media (max-width: 760px) {
+    .custom1,
+    .custom2 {
+      display: none;
+    }
+  }
+  
+  /* Optional: Adjust navigation position */
+  .swiper-button-prev-places {
+    left: 0px; /* Adjust left position */
+    top: 850px;
+  }
+  .swiper-button-next-places {
+    right: 0px;
+    top: 850px;
+  }
+  @media (max-width: 425px) {
+    .swiper-button-prev,
+    .swiper-button-next {
+      top: 200px; /* Adjusted position for mobile screens */
+    }
+  }
+  
+  .acha {
+    margin-top: 70px;
+  }
+  
+  .acha2 {
+    margin-top: 0px;
+  }
+  

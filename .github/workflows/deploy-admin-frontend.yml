@@ -1,0 +1,160 @@
+name: Deploy Admin Frontend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: huz-admin-frontend-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HOSTINGER_SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+      HOSTINGER_SSH_PORT: ${{ secrets.HOSTINGER_SSH_PORT }}
+      HOSTINGER_SSH_USER: ${{ secrets.HOSTINGER_SSH_USER }}
+      HOSTINGER_SSH_PASSWORD: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
+      PRODUCTION_API_BASE_URL: https://hajjumrah.org
+      REMOTE_ROOT: /home/u314778599/domains/hajjumrah.co/public_html/huzadmin
+      ARTIFACT_NAME: huz-admin-frontend-build.tgz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect deploy secret availability
+        id: deploy_secrets
+        shell: bash
+        run: |
+          missing=()
+          for name in HOSTINGER_SSH_HOST HOSTINGER_SSH_PORT HOSTINGER_SSH_USER HOSTINGER_SSH_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "Hostinger deploy skipped."
+              echo
+              echo "Missing GitHub Secrets:"
+              printf -- "- %s\n" "${missing[@]}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        if: steps.deploy_secrets.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install SSH client tools
+        if: steps.deploy_secrets.outputs.ready == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+
+      - name: Trust Hostinger host key
+        if: steps.deploy_secrets.outputs.ready == 'true'
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${HOSTINGER_SSH_PORT}" -H "${HOSTINGER_SSH_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Validate Hostinger SSH credentials
+        if: steps.deploy_secrets.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          export SSHPASS="${HOSTINGER_SSH_PASSWORD}"
+          if ! sshpass -e ssh \
+            -o BatchMode=no \
+            -o PreferredAuthentications=password \
+            -o PubkeyAuthentication=no \
+            -o StrictHostKeyChecking=yes \
+            -p "${HOSTINGER_SSH_PORT}" \
+            "${HOSTINGER_SSH_USER}@${HOSTINGER_SSH_HOST}" \
+            "echo hostinger-auth-ok"; then
+            {
+              echo "Hostinger SSH authentication failed before build."
+              echo
+              echo "Check these GitHub Secrets for this repository:"
+              echo "- HOSTINGER_SSH_HOST"
+              echo "- HOSTINGER_SSH_PORT"
+              echo "- HOSTINGER_SSH_USER"
+              echo "- HOSTINGER_SSH_PASSWORD"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        if: steps.deploy_secrets.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Configure production env
+        if: steps.deploy_secrets.outputs.ready == 'true'
+        shell: bash
+        run: |
+          cat > .env.production <<EOF
+          REACT_APP_API_BASE_URL=${PRODUCTION_API_BASE_URL}
+          EOF
+
+      - name: Run tests
+        if: steps.deploy_secrets.outputs.ready == 'true'
+        run: npm test
+
+      - name: Build
+        if: steps.deploy_secrets.outputs.ready == 'true'
+        run: npm run build
+
+      - name: Package build output
+        if: steps.deploy_secrets.outputs.ready == 'true'
+        shell: bash
+        run: tar -czf "${ARTIFACT_NAME}" -C build .
+
+      - name: Upload build archive
+        if: steps.deploy_secrets.outputs.ready == 'true'
+        shell: bash
+        run: |
+          export SSHPASS="${HOSTINGER_SSH_PASSWORD}"
+          sshpass -e scp \
+            -P "${HOSTINGER_SSH_PORT}" \
+            "${ARTIFACT_NAME}" \
+            "${HOSTINGER_SSH_USER}@${HOSTINGER_SSH_HOST}:~/"
+
+      - name: Deploy on Hostinger
+        if: steps.deploy_secrets.outputs.ready == 'true'
+        shell: bash
+        run: |
+          export SSHPASS="${HOSTINGER_SSH_PASSWORD}"
+          sshpass -e ssh \
+            -p "${HOSTINGER_SSH_PORT}" \
+            "${HOSTINGER_SSH_USER}@${HOSTINGER_SSH_HOST}" \
+            "ARTIFACT_NAME='${ARTIFACT_NAME}' REMOTE_ROOT='${REMOTE_ROOT}' bash -s" <<'EOF'
+          set -euo pipefail
+
+          STAGING_DIR="$HOME/deploy-staging/admin-frontend"
+          BACKUP_DIR="$HOME/deploy-backups/github-actions/admin-frontend-$(date +%Y%m%d-%H%M%S)"
+
+          mkdir -p "$STAGING_DIR" "$BACKUP_DIR" "$REMOTE_ROOT"
+          find "$STAGING_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          tar -xzf "$HOME/$ARTIFACT_NAME" -C "$STAGING_DIR"
+
+          if [ -n "$(ls -A "$REMOTE_ROOT" 2>/dev/null)" ]; then
+            cp -a "$REMOTE_ROOT"/. "$BACKUP_DIR"/
+          fi
+
+          find "$REMOTE_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          cp -a "$STAGING_DIR"/. "$REMOTE_ROOT"/
+          find "$REMOTE_ROOT" -name '._*' -delete
+          rm -rf "$STAGING_DIR" "$HOME/$ARTIFACT_NAME"
+          EOF

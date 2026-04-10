@@ -1,0 +1,29 @@
+/* customToast.css */
+.custom-toast {
+  display: flex;
+  align-items: flex-start; /* Align items to the start */
+  width: 400px;
+}
+
+.toast-logo {
+  width: 40px;
+  height: 40px;
+  margin-right: 10px;
+}
+
+.toast-content h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.toast-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #555;
+}
+
+/* customToast.css */
+.Toastify__toast {
+  width: 400px; /* Adjust this value as needed */
+}
